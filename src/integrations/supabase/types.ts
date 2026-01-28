@@ -21,6 +21,8 @@ export type Database = {
           code: string
           created_at: string
           id: string
+          latitude: number | null
+          longitude: number | null
           name: string
           population: number | null
         }
@@ -30,6 +32,8 @@ export type Database = {
           code: string
           created_at?: string
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           name: string
           population?: number | null
         }
@@ -39,6 +43,8 @@ export type Database = {
           code?: string
           created_at?: string
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           name?: string
           population?: number | null
         }
@@ -217,6 +223,54 @@ export type Database = {
         }
         Relationships: []
       }
+      raw_listings: {
+        Row: {
+          created_at: string
+          id: string
+          job_id: string
+          opportunity_id: string | null
+          parsed_data: Json | null
+          processed: boolean
+          raw_data: Json
+          source_url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          job_id: string
+          opportunity_id?: string | null
+          parsed_data?: Json | null
+          processed?: boolean
+          raw_data: Json
+          source_url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          job_id?: string
+          opportunity_id?: string | null
+          parsed_data?: Json | null
+          processed?: boolean
+          raw_data?: Json
+          source_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "raw_listings_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "scraping_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "raw_listings_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       regional_pricing: {
         Row: {
           asset_category: string | null
@@ -293,6 +347,89 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      scraping_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          items_found: number | null
+          items_processed: number | null
+          source_id: string
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          items_found?: number | null
+          items_processed?: number | null
+          source_id: string
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          items_found?: number | null
+          items_processed?: number | null
+          source_id?: string
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scraping_jobs_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "scraping_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scraping_sources: {
+        Row: {
+          base_url: string
+          config: Json | null
+          created_at: string
+          id: string
+          is_active: boolean
+          last_scraped_at: string | null
+          name: string
+          platform_type: string
+          scrape_frequency: string
+          updated_at: string
+        }
+        Insert: {
+          base_url: string
+          config?: Json | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_scraped_at?: string | null
+          name: string
+          platform_type: string
+          scrape_frequency?: string
+          updated_at?: string
+        }
+        Update: {
+          base_url?: string
+          config?: Json | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_scraped_at?: string | null
+          name?: string
+          platform_type?: string
+          scrape_frequency?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {

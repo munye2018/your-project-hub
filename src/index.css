@@ -168,3 +168,26 @@
     background-clip: text;
   }
 }
+
+/* Leaflet Map Customizations */
+.leaflet-container {
+  font-family: inherit;
+}
+
+.leaflet-popup-content-wrapper {
+  @apply rounded-xl shadow-lg border-0 p-0 overflow-hidden;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  width: auto !important;
+}
+
+.leaflet-popup-tip {
+  @apply bg-card;
+}
+
+.custom-marker {
+  background: transparent !important;
+  border: none !important;
+}

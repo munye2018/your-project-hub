@@ -1,1 +1,13 @@
 project_id = "svxvjoirolzsghhomwfo"
+
+[functions.firecrawl-scrape]
+verify_jwt = false
+
+[functions.firecrawl-map]
+verify_jwt = false
+
+[functions.scrape-marketplace]
+verify_jwt = false
+
+[functions.process-listings]
+verify_jwt = false
