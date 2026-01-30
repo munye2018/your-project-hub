@@ -1,31 +1,33 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { TrendingUp, Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { TrendingUp, Mail, Lock, User, ArrowRight, Loader2 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 const signInSchema = z.object({
-  email: z.string().email('Please enter a valid email'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  email: z.string().email("Please enter a valid email"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
-const signUpSchema = z.object({
-  fullName: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Please enter a valid email'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ['confirmPassword'],
-});
+const signUpSchema = z
+  .object({
+    fullName: z.string().min(2, "Name must be at least 2 characters"),
+    email: z.string().email("Please enter a valid email"),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
 
 type SignInValues = z.infer<typeof signInSchema>;
 type SignUpValues = z.infer<typeof signUpSchema>;
@@ -39,18 +41,18 @@ export default function Auth() {
   const signInForm = useForm<SignInValues>({
     resolver: zodResolver(signInSchema),
     defaultValues: {
-      email: '',
-      password: '',
+      email: "",
+      password: "",
     },
   });
 
   const signUpForm = useForm<SignUpValues>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
-      fullName: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
+      fullName: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
     },
   });
 
@@ -60,16 +62,16 @@ export default function Auth() {
       const { error } = await signIn(values.email, values.password);
       if (error) {
         toast({
-          variant: 'destructive',
-          title: 'Sign in failed',
+          variant: "destructive",
+          title: "Sign in failed",
           description: error.message,
         });
       } else {
         toast({
-          title: 'Welcome back!',
-          description: 'You have successfully signed in.',
+          title: "Welcome back!",
+          description: "You have successfully signed in.",
         });
-        navigate('/');
+        navigate("/");
       }
     } finally {
       setIsLoading(false);
@@ -82,16 +84,16 @@ export default function Auth() {
       const { error } = await signUp(values.email, values.password, values.fullName);
       if (error) {
         toast({
-          variant: 'destructive',
-          title: 'Sign up failed',
+          variant: "destructive",
+          title: "Sign up failed",
           description: error.message,
         });
       } else {
         toast({
-          title: 'Account created!',
-          description: 'Welcome to Arbitage.ke! Start finding profitable deals.',
+          title: "Account created!",
+          description: "Welcome to Arbitrage.ke! Start finding profitable deals.",
         });
-        navigate('/');
+        navigate("/");
       }
     } finally {
       setIsLoading(false);
@@ -109,10 +111,11 @@ export default function Auth() {
             </div>
           </div>
           <h1 className="text-4xl font-display font-bold text-primary-foreground mb-4">
-            Arbitage<span className="text-primary">.ke</span>
+            Arbitrage<span className="text-primary">.ke</span>
           </h1>
           <p className="text-lg text-muted-foreground mb-8">
-            Discover undervalued assets across Kenya. AI-powered analysis finds you the best deals on vehicles, homes, and commercial properties.
+            Discover undervalued assets across Kenya. AI-powered analysis finds you the best deals on vehicles, homes,
+            and commercial properties.
           </p>
           <div className="grid grid-cols-3 gap-4 text-center">
             <div className="p-4 rounded-lg bg-sidebar-accent/50">
@@ -141,9 +144,7 @@ export default function Auth() {
               </div>
             </div>
             <CardTitle className="text-2xl font-display">Welcome</CardTitle>
-            <CardDescription>
-              Sign in to your account or create a new one
-            </CardDescription>
+            <CardDescription>Sign in to your account or create a new one</CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="signin" className="w-full">
