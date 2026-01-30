@@ -3,10 +3,14 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { UserProfile } from '@/types/opportunity';
 
+type AppRole = 'admin' | 'moderator' | 'user';
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   profile: UserProfile | null;
+  roles: AppRole[];
+  isAdmin: boolean;
   loading: boolean;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
@@ -20,7 +24,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [roles, setRoles] = useState<AppRole[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const isAdmin = roles.includes('admin');
 
   useEffect(() => {
     // Set up auth state listener
@@ -28,13 +35,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       
-      // Defer profile fetch to avoid deadlock
+      // Defer profile and roles fetch to avoid deadlock
       if (session?.user) {
         setTimeout(() => {
           fetchProfile(session.user.id);
+          fetchRoles(session.user.id);
         }, 0);
       } else {
         setProfile(null);
+        setRoles([]);
       }
     });
 
@@ -44,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id);
+        fetchRoles(session.user.id);
       }
       setLoading(false);
     });
@@ -67,6 +77,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(data as UserProfile);
     } catch (err) {
       console.error('Error fetching profile:', err);
+    }
+  };
+
+  const fetchRoles = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error('Error fetching roles:', error);
+        return;
+      }
+
+      const userRoles = (data || []).map((r: { role: string }) => r.role as AppRole);
+      setRoles(userRoles);
+    } catch (err) {
+      console.error('Error fetching roles:', err);
     }
   };
 
@@ -117,6 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSession(null);
     setProfile(null);
+    setRoles([]);
   };
 
   const updateProfile = async (updates: Partial<UserProfile>) => {
@@ -148,6 +178,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         session,
         profile,
+        roles,
+        isAdmin,
         loading,
         signUp,
         signIn,

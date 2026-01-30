@@ -6,7 +6,7 @@ import { ShieldAlert } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function ScrapingAdmin() {
-  const { user, profile, loading } = useAuth();
+  const { user, isAdmin, loading } = useAuth();
 
   if (loading) {
     return (
@@ -20,9 +20,7 @@ export default function ScrapingAdmin() {
     return <Navigate to="/auth" replace />;
   }
 
-  // Check if user is admin
-  const isAdmin = profile?.role === 'admin';
-
+  // Check if user is admin using the user_roles table
   if (!isAdmin) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
