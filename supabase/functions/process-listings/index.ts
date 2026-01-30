@@ -5,12 +5,59 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+async function verifyAdminUser(req: Request): Promise<{ userId: string } | { error: string; status: number }> {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return { error: 'Missing or invalid authorization header', status: 401 };
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+  
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } }
+  });
+
+  const token = authHeader.replace('Bearer ', '');
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+  
+  if (claimsError || !claimsData?.claims) {
+    console.error('Auth verification failed:', claimsError);
+    return { error: 'Unauthorized', status: 401 };
+  }
+
+  const userId = claimsData.claims.sub as string;
+  
+  // Check if user has admin role using the is_admin function
+  const { data: isAdmin, error: roleError } = await supabase.rpc('is_admin', { _user_id: userId });
+  
+  if (roleError) {
+    console.error('Role check failed:', roleError);
+    return { error: 'Failed to verify user role', status: 500 };
+  }
+
+  if (!isAdmin) {
+    return { error: 'Admin access required', status: 403 };
+  }
+
+  return { userId };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Verify authentication and admin role
+    const authResult = await verifyAdminUser(req);
+    if ('error' in authResult) {
+      return new Response(
+        JSON.stringify({ success: false, error: authResult.error }),
+        { status: authResult.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const firecrawlApiKey = Deno.env.get('FIRECRAWL_API_KEY');
@@ -25,6 +72,8 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const { batch_size = 10 } = await req.json();
+
+    console.log('Process listings initiated by admin user:', authResult.userId);
 
     // Get unprocessed raw listings
     const { data: rawListings, error: fetchError } = await supabase
@@ -193,8 +242,8 @@ Return ONLY the JSON object, no other text.`;
           })
           .eq('id', listing.id);
 
-        // Update job items_processed count
-        await supabase.rpc('increment_job_processed', { job_id: listing.job_id });
+        // Update job items_processed count using the RPC function
+        await supabase.rpc('increment_job_processed', { p_job_id: listing.job_id });
 
         processed++;
         results.push({
