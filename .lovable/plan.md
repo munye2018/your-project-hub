@@ -1,349 +1,178 @@
 
 
-# Implementation Plan: Web Scraping Engine, AI Valuation, Kenya Map View & Notifications
+# In-App Notifications System Implementation Plan
 
 ## Overview
-This plan implements four major features to complete the AI-powered arbitrage platform:
-1. **Web Scraping Engine** - Firecrawl-powered data collection from Kenyan marketplaces
-2. **AI Valuation Engine** - Lovable AI-powered asset analysis and pricing
-3. **Kenya Interactive Map** - Visual opportunity discovery across 47 counties
-4. **WhatsApp + Email Notifications** - Real-time alerts for high-value deals
+Build a complete in-app notification system with a bell icon dropdown in the navbar that shows new opportunities and system alerts. The system will leverage the existing `notifications` table and integrate with the opportunity tracking workflow.
 
 ---
 
-## 1. Web Scraping Engine
+## What Will Be Built
 
-### Database Schema Updates
-Add tables to track scraping jobs and sources:
+### 1. Notification Bell Component
+A dropdown menu in the navbar (replacing the current static bell) that:
+- Shows unread notification count as a badge
+- Displays a scrollable list of recent notifications
+- Allows marking notifications as read
+- Links directly to opportunities when clicked
+
+### 2. Real-time Updates
+- Subscribe to the notifications table using Supabase realtime
+- New notifications appear instantly without page refresh
+- Unread count updates automatically
+
+### 3. Notification Types Supported
+- **new_opportunity**: When a high-value opportunity is found (>25% profit margin)
+- **price_drop**: When a saved opportunity's price decreases
+- **high_value**: Special alerts for exceptional deals (>40% profit margin)
+- **system**: Platform updates and announcements
+
+---
+
+## Database Changes
+
+The `notifications` table already exists with the correct schema:
+- `id`, `user_id`, `opportunity_id`, `type`, `title`, `message`, `is_read`, `created_at`
+
+**New additions needed:**
+- Enable realtime on the notifications table
+- Add a database function to auto-create notifications when high-value opportunities are inserted
+- Add an index for faster unread notification queries
 
 ```text
-+------------------+     +-------------------+     +------------------+
-| scraping_sources |     | scraping_jobs     |     | raw_listings     |
-+------------------+     +-------------------+     +------------------+
-| id               |     | id                |     | id               |
-| name             |     | source_id         |     | job_id           |
-| platform_type    |     | status            |     | source_url       |
-| base_url         |     | started_at        |     | raw_data (JSONB) |
-| scrape_frequency |     | completed_at      |     | parsed_data      |
-| is_active        |     | items_found       |     | processed        |
-| last_scraped     |     | error_message     |     | opportunity_id   |
-+------------------+     +-------------------+     +------------------+
++-------------------+         +-------------------+
+|   opportunities   |  --->   |   notifications   |
++-------------------+         +-------------------+
+| profit_percentage |         | user_id           |
+| > 25%             |  creates| opportunity_id    |
++-------------------+         | type, title, msg  |
+                              +-------------------+
 ```
-
-### Edge Functions
-Create 3 backend functions:
-
-**a) `firecrawl-scrape` - Single URL Scraper**
-- Accepts URL and extraction options
-- Uses Firecrawl to extract structured data
-- Returns cleaned listing data
-
-**b) `scrape-marketplace` - Marketplace Orchestrator**
-- Accepts source configuration (Cheki, BuyRentKenya, JiJi, etc.)
-- Maps URLs for the marketplace using Firecrawl Map API
-- Queues individual scrapes
-- Stores raw data for AI processing
-
-**c) `process-listings` - Batch Processor**
-- Fetches unprocessed raw listings
-- Calls AI valuation for each
-- Creates/updates opportunities table
-- Marks listings as processed
-
-### Connector Setup
-- Enable **Firecrawl connector** (requires user approval)
-- Firecrawl API key will be injected as `FIRECRAWL_API_KEY`
-
-### Frontend Components
-- **ScrapingDashboard.tsx** - View scraping jobs, sources, and status
-- **AddSourceForm.tsx** - Configure new marketplace sources
-- **ManualScrapeButton.tsx** - Trigger immediate scrapes
 
 ---
 
-## 2. AI Valuation Engine
+## Files to Create/Modify
 
-### Edge Functions
+### New Files
+| File | Purpose |
+|------|---------|
+| `src/components/notifications/NotificationBell.tsx` | Bell icon with dropdown showing notifications |
+| `src/components/notifications/NotificationItem.tsx` | Individual notification row component |
+| `src/hooks/useNotifications.ts` | Hook for fetching, subscribing, and managing notifications |
 
-**a) `analyze-listing` - Asset Valuation**
-Uses Lovable AI (google/gemini-3-flash-preview) to:
-- Extract asset details from scraped content
-- Estimate true market value based on:
-  - Regional pricing data (all 47 counties)
-  - Asset condition assessment
-  - Comparable sales analysis
-- Generate confidence score (0-100%)
+### Modified Files
+| File | Changes |
+|------|---------|
+| `src/components/layout/Navbar.tsx` | Replace static bell with NotificationBell component |
+| `supabase/functions/process-listings/index.ts` | Add notification creation for high-value opportunities |
 
-**b) `suggest-improvements` - ROI Analysis**
-Uses Lovable AI to:
-- Recommend value-adding improvements
-- Estimate improvement costs by region
-- Calculate ROI for each recommendation
-- Return structured recommendations array
+---
 
-**c) `analyze-seller` - Credibility Scoring**
-Uses Lovable AI to:
-- Analyze seller information from listing
-- Cross-reference patterns (account age, pricing consistency)
-- Detect red flags (scam indicators)
-- Generate credibility score (1-10)
+## Implementation Steps
 
-### AI Prompt System
-Structure prompts for consistent output:
+### Step 1: Database Setup
+- Enable realtime on the `notifications` table
+- Create trigger function to auto-notify users when opportunities with >25% profit are created
+- Add performance index on `(user_id, is_read, created_at)`
+
+### Step 2: Create Notifications Hook
+Build `useNotifications.ts` with:
+- Fetch recent notifications for current user
+- Subscribe to realtime inserts
+- Mark single/all notifications as read
+- Delete old notifications
+- Return unread count
+
+### Step 3: Build Notification Components
+**NotificationBell.tsx:**
+- Popover/dropdown triggered by bell icon
+- Badge showing unread count (hidden when 0)
+- Header with "Mark all read" action
+- Scrollable list of notifications
+- Empty state when no notifications
+
+**NotificationItem.tsx:**
+- Icon based on notification type
+- Title and truncated message
+- Relative timestamp ("2 min ago")
+- Click to navigate to opportunity and mark as read
+- Hover state indicating unread status
+
+### Step 4: Integrate with Navbar
+- Import and use NotificationBell component
+- Remove the current static Bell button
+- Ensure proper z-index for dropdown over map view
+
+### Step 5: Auto-Generate Notifications
+Modify `process-listings` edge function to:
+- After creating an opportunity with profit_percentage > 25%, create notifications
+- Target all users who have matching preferences (region, asset type)
+- Use appropriate notification type based on profit level
+
+---
+
+## Technical Details
+
+### Notification Hook API
 ```text
-System: You are a Kenyan real estate and vehicle market expert...
-Input: {listing_data, regional_pricing, comparable_sales}
-Output: {estimated_value, confidence_score, reasoning, improvements[]}
+useNotifications() returns:
+  - notifications: Notification[]
+  - unreadCount: number
+  - loading: boolean
+  - markAsRead(id: string): void
+  - markAllAsRead(): void
+  - deleteNotification(id: string): void
 ```
 
-### Regional Pricing Integration
-- Seed `regional_pricing` table with baseline data for all 47 counties
-- AI uses this data for accurate local valuations
-- Prices update as more data is scraped
-
----
-
-## 3. Kenya Interactive Map View
-
-### Technology
-Use **Leaflet.js** with **react-leaflet** for interactive mapping:
-- Lightweight, open-source
-- Works well with React
-- Supports custom markers and clustering
-
-### Database Updates
-Add geographic coordinates to `kenya_counties`:
-```sql
-ALTER TABLE kenya_counties ADD COLUMN latitude NUMERIC;
-ALTER TABLE kenya_counties ADD COLUMN longitude NUMERIC;
-```
-
-Seed with actual county center coordinates.
-
-### Map Components
-
-**a) `KenyaMap.tsx` - Main Map Component**
-- Renders Kenya with county boundaries
-- Clusters opportunities by location
-- Color-coded markers by asset type
-- Click marker to view opportunity details
-
-**b) `MapFilters.tsx` - Map-Specific Filters**
-- Filter by asset type (vehicle/residential/commercial)
-- Filter by profit margin
-- Toggle heatmap vs markers
-
-**c) `MapSidebar.tsx` - Selected Opportunity Panel**
-- Shows details when marker clicked
-- Quick actions (save, contact, dismiss)
-- Navigate to full opportunity view
-
-### Map Features
-- **Marker Clustering**: Groups nearby opportunities
-- **Color Coding**: Blue (vehicles), Green (residential), Amber (commercial)
-- **Profit Indicators**: Marker size based on profit percentage
-- **County Highlighting**: Hover to see county stats
-- **Responsive Design**: Works on mobile with touch gestures
-
----
-
-## 4. WhatsApp + Email Notifications
-
-### Database Updates
-Add notification preferences and tracking:
-```sql
-ALTER TABLE profiles ADD COLUMN min_profit_threshold NUMERIC DEFAULT 20;
-ALTER TABLE profiles ADD COLUMN instant_alert_enabled BOOLEAN DEFAULT true;
-
-CREATE TABLE notification_logs (
-  id UUID PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id),
-  notification_id UUID REFERENCES notifications(id),
-  channel TEXT CHECK (channel IN ('whatsapp', 'email', 'push')),
-  status TEXT,
-  sent_at TIMESTAMP,
-  delivered_at TIMESTAMP,
-  error_message TEXT
-);
-```
-
-### WhatsApp Integration
-Use **WhatsApp Business API** (Meta Cloud API):
-
-**Edge Function: `send-whatsapp`**
-- Accepts: user_id, opportunity details, message template
-- Sends rich message with:
-  - Asset image
-  - Title and location
-  - Price comparison
-  - Profit percentage
-  - "View Details" link button
-
-**Message Templates**:
+### Realtime Subscription
 ```text
-🔥 *New High-Value Opportunity!*
-
-*{asset_type}: {title}*
-📍 {city}, {county}
-
-Listed: KES {listed_price}
-Value: KES {estimated_value}
-💰 *Profit: +{profit_percentage}%*
-
-Tap to view: {app_link}
+Channel: 'notifications-{userId}'
+Event: postgres_changes (INSERT)
+Table: notifications
+Filter: user_id=eq.{currentUserId}
 ```
 
-### Email Notifications (Resend)
-**Edge Function: `send-email`**
-- Password reset, email verification (auth emails)
-- Weekly digest of new opportunities
-- High-value alert emails
-
-**Email Templates**:
-- Welcome email with setup guide
-- Daily/weekly opportunity digest
-- High-value instant alert
-
-### Notification Triggers
-**Edge Function: `trigger-notifications`**
-- Called after new opportunities are processed
-- Checks user preferences (regions, asset types, thresholds)
-- Sends via appropriate channel based on `alert_frequency`
-
-### In-App Notification Center
-**Components:**
-- `NotificationBell.tsx` - Header icon with unread count
-- `NotificationDropdown.tsx` - Quick view of recent notifications
-- `NotificationsPage.tsx` - Full history with filters
+### Dropdown Behavior
+- Opens on click, closes on click-outside
+- Maximum height of 400px with scroll
+- Shows up to 20 most recent notifications
+- "View all" link at bottom (future: dedicated notifications page)
 
 ---
 
-## Technical Architecture
+## User Experience Flow
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│                         FRONTEND                                 │
-├─────────────────────────────────────────────────────────────────┤
-│  Dashboard  │  Map View  │  Scraping Admin  │  Notifications    │
-└──────┬──────┴─────┬──────┴───────┬──────────┴────────┬──────────┘
-       │            │              │                   │
-       ▼            ▼              ▼                   ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    EDGE FUNCTIONS                                │
-├─────────────┬──────────────┬─────────────────┬──────────────────┤
-│ firecrawl-  │ analyze-     │ scrape-         │ send-            │
-│ scrape      │ listing      │ marketplace     │ whatsapp/email   │
-├─────────────┼──────────────┼─────────────────┼──────────────────┤
-│ process-    │ suggest-     │ trigger-        │ send-email       │
-│ listings    │ improvements │ notifications   │                  │
-└──────┬──────┴──────┬───────┴────────┬────────┴─────────┬────────┘
-       │             │                │                  │
-       ▼             ▼                ▼                  ▼
-┌──────────────┐ ┌──────────┐ ┌──────────────┐ ┌─────────────────┐
-│  Firecrawl   │ │ Lovable  │ │   Supabase   │ │ WhatsApp/Resend │
-│     API      │ │    AI    │ │   Database   │ │      APIs       │
-└──────────────┘ └──────────┘ └──────────────┘ └─────────────────┘
+1. User logs in
+   |
+2. NotificationBell loads existing notifications
+   |
+3. Realtime subscription starts
+   |
+4. When new opportunity is scraped:
+   - process-listings creates notification
+   - User sees badge count increase
+   - Bell icon gets attention indicator
+   |
+5. User clicks bell
+   - Dropdown shows notifications
+   - Newest at top
+   |
+6. User clicks notification
+   - Navigates to opportunity (map or detail view)
+   - Notification marked as read
+   - Count decreases
 ```
 
 ---
 
-## Implementation Order
+## Verification Points
 
-### Step 1: Connect Firecrawl
-- Enable Firecrawl connector
-- Create `firecrawl-scrape` edge function
-- Test with sample URL
-
-### Step 2: AI Valuation Engine
-- Create `analyze-listing` edge function
-- Create `suggest-improvements` edge function
-- Test with mock listing data
-
-### Step 3: Full Scraping Pipeline
-- Create `scrape-marketplace` edge function
-- Create `process-listings` edge function
-- Build scraping dashboard UI
-- Seed initial marketplace sources
-
-### Step 4: Interactive Map
-- Add Leaflet dependencies
-- Add coordinates to counties table
-- Build `KenyaMap` component
-- Add map route and navigation
-
-### Step 5: Notifications System
-- Create notification edge functions
-- Build in-app notification center
-- Integrate WhatsApp Business API
-- Set up email templates with Resend
-
----
-
-## Required Secrets & Connectors
-
-| Secret | Source | Purpose |
-|--------|--------|---------|
-| `FIRECRAWL_API_KEY` | Firecrawl Connector | Web scraping |
-| `LOVABLE_API_KEY` | Auto-provisioned | AI valuation |
-| `WHATSAPP_ACCESS_TOKEN` | User provides | WhatsApp messaging |
-| `WHATSAPP_PHONE_NUMBER_ID` | User provides | WhatsApp sender |
-| `RESEND_API_KEY` | User provides | Email notifications |
-
----
-
-## New Dependencies
-
-```json
-{
-  "leaflet": "^1.9.4",
-  "react-leaflet": "^4.2.1",
-  "@types/leaflet": "^1.9.8",
-  "react-markdown": "^9.0.1",
-  "remark-gfm": "^4.0.0"
-}
-```
-
----
-
-## Files to Create
-
-### Edge Functions (7 functions)
-- `supabase/functions/firecrawl-scrape/index.ts`
-- `supabase/functions/scrape-marketplace/index.ts`
-- `supabase/functions/process-listings/index.ts`
-- `supabase/functions/analyze-listing/index.ts`
-- `supabase/functions/suggest-improvements/index.ts`
-- `supabase/functions/send-whatsapp/index.ts`
-- `supabase/functions/send-email/index.ts`
-
-### Frontend Components (10+ components)
-- `src/components/map/KenyaMap.tsx`
-- `src/components/map/MapMarker.tsx`
-- `src/components/map/MapSidebar.tsx`
-- `src/components/scraping/ScrapingDashboard.tsx`
-- `src/components/scraping/SourceCard.tsx`
-- `src/components/notifications/NotificationBell.tsx`
-- `src/components/notifications/NotificationDropdown.tsx`
-- `src/pages/MapView.tsx`
-- `src/pages/ScrapingAdmin.tsx`
-- `src/pages/Notifications.tsx`
-
-### API Layer
-- `src/lib/api/firecrawl.ts`
-- `src/lib/api/notifications.ts`
-- `src/hooks/useOpportunities.ts`
-- `src/hooks/useNotifications.ts`
-
----
-
-## Summary
-
-This implementation delivers a complete AI-powered arbitrage discovery system:
-
-- **Automated Data Collection**: Firecrawl scrapes Kenyan marketplaces continuously
-- **AI-Powered Analysis**: Lovable AI values assets and suggests improvements
-- **Visual Discovery**: Interactive map shows opportunities across all 47 counties
-- **Instant Alerts**: WhatsApp and email notify you of high-value deals
-
-All features integrate seamlessly with the existing dashboard and authentication system.
+After implementation:
+1. Bell icon shows in navbar with unread count badge
+2. Clicking bell opens dropdown with notifications list
+3. Clicking a notification navigates appropriately
+4. "Mark all as read" clears all notifications
+5. New notifications appear in realtime when opportunities are created
+6. Scraping admin panel remains functional (will verify during implementation)
 
