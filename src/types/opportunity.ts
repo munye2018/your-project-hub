@@ -2,6 +2,8 @@ export type AssetType = 'vehicle' | 'residential' | 'commercial';
 
 export type OpportunityStatus = 'new' | 'contacted' | 'negotiating' | 'closed' | 'dismissed';
 
+export type SubscriptionTier = 'free' | 'basic' | 'standard' | 'hustler';
+
 export interface Opportunity {
   id: string;
   asset_type: AssetType;
@@ -84,6 +86,8 @@ export interface UserProfile {
   alert_frequency: 'instant' | 'daily' | 'weekly';
   whatsapp_number: string | null;
   notifications_enabled: boolean;
+  sound_enabled: boolean;
+  push_enabled: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -97,6 +101,25 @@ export interface Notification {
   message: string;
   is_read: boolean;
   created_at: string;
+}
+
+export interface UserCredits {
+  id: string;
+  user_id: string;
+  credits_remaining: number;
+  credits_used_this_month: number;
+  subscription_tier: SubscriptionTier;
+  subscription_started_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OpportunityReveal {
+  id: string;
+  user_id: string;
+  opportunity_id: string;
+  revealed_at: string;
+  credits_spent: number;
 }
 
 export interface DashboardStats {

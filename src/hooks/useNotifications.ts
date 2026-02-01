@@ -1,13 +1,18 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useNotificationSound } from '@/hooks/useNotificationSound';
 import type { Notification } from '@/types/opportunity';
 
 export function useNotifications() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
+  
+  // Sound effect integration
+  const soundEnabled = profile?.sound_enabled ?? true;
+  const { playForNotification } = useNotificationSound(soundEnabled);
 
   // Fetch notifications for current user
   const fetchNotifications = useCallback(async () => {
@@ -71,6 +76,9 @@ export function useNotifications() {
           const newNotification = payload.new as Notification;
           setNotifications(prev => [newNotification, ...prev].slice(0, 20));
           setUnreadCount(prev => prev + 1);
+          
+          // Play sound for new notifications
+          playForNotification(newNotification.type);
         }
       )
       .on(

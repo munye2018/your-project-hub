@@ -175,6 +175,38 @@ export type Database = {
         }
         Relationships: []
       }
+      opportunity_reveals: {
+        Row: {
+          credits_spent: number
+          id: string
+          opportunity_id: string
+          revealed_at: string
+          user_id: string
+        }
+        Insert: {
+          credits_spent?: number
+          id?: string
+          opportunity_id: string
+          revealed_at?: string
+          user_id: string
+        }
+        Update: {
+          credits_spent?: number
+          id?: string
+          opportunity_id?: string
+          revealed_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opportunity_reveals_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           alert_frequency: string | null
@@ -186,7 +218,9 @@ export type Database = {
           notifications_enabled: boolean | null
           preferred_asset_types: string[] | null
           preferred_regions: string[] | null
+          push_enabled: boolean | null
           role: string
+          sound_enabled: boolean | null
           updated_at: string
           user_id: string
           whatsapp_number: string | null
@@ -201,7 +235,9 @@ export type Database = {
           notifications_enabled?: boolean | null
           preferred_asset_types?: string[] | null
           preferred_regions?: string[] | null
+          push_enabled?: boolean | null
           role?: string
+          sound_enabled?: boolean | null
           updated_at?: string
           user_id: string
           whatsapp_number?: string | null
@@ -216,10 +252,39 @@ export type Database = {
           notifications_enabled?: boolean | null
           preferred_asset_types?: string[] | null
           preferred_regions?: string[] | null
+          push_enabled?: boolean | null
           role?: string
+          sound_enabled?: boolean | null
           updated_at?: string
           user_id?: string
           whatsapp_number?: string | null
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -431,6 +496,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_credits: {
+        Row: {
+          created_at: string
+          credits_remaining: number
+          credits_used_this_month: number
+          id: string
+          subscription_started_at: string
+          subscription_tier: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credits_remaining?: number
+          credits_used_this_month?: number
+          id?: string
+          subscription_started_at?: string
+          subscription_tier?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          credits_remaining?: number
+          credits_used_this_month?: number
+          id?: string
+          subscription_started_at?: string
+          subscription_tier?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -457,6 +555,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_tier_credit_limit: { Args: { tier: string }; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

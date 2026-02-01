@@ -27,6 +27,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { CreditsBadge } from '@/components/credits/CreditsBadge';
+import { UpgradeModal } from '@/components/credits/UpgradeModal';
+import { useCredits } from '@/hooks/useCredits';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -38,7 +41,9 @@ const navigation = [
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const { user, profile, signOut } = useAuth();
+  const { credits } = useCredits();
   const location = useLocation();
 
   const getInitials = (name: string | null | undefined) => {
@@ -102,6 +107,9 @@ export function Navbar() {
                 />
               </div>
             </div>
+
+            {/* Credits Badge */}
+            <CreditsBadge onUpgradeClick={() => setShowUpgrade(true)} />
 
             {/* Notifications */}
             <NotificationBell />
@@ -192,6 +200,13 @@ export function Navbar() {
           </div>
         </div>
       )}
+
+      {/* Upgrade Modal */}
+      <UpgradeModal
+        open={showUpgrade}
+        onOpenChange={setShowUpgrade}
+        currentTier={credits?.subscription_tier || 'free'}
+      />
     </nav>
   );
 }

@@ -1,9 +1,11 @@
-import { Car, Home, Building2, MapPin, User, TrendingUp, ExternalLink, Bookmark, X } from 'lucide-react';
+import { Car, Home, Building2, MapPin, User, TrendingUp, ExternalLink, Bookmark, X, Lock, Eye } from 'lucide-react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Opportunity } from '@/types/opportunity';
 import { cn } from '@/lib/utils';
+import { useCredits } from '@/hooks/useCredits';
+import { RevealButton } from '@/components/credits/RevealButton';
 
 interface OpportunityCardProps {
   opportunity: Opportunity;
@@ -22,6 +24,9 @@ export function OpportunityCard({
   onContact,
   onClick,
 }: OpportunityCardProps) {
+  const { isRevealed } = useCredits();
+  const revealed = isRevealed(opportunity.id);
+
   const assetIcons = {
     vehicle: Car,
     residential: Home,
@@ -125,19 +130,24 @@ export function OpportunityCard({
         </div>
 
         {/* Seller info */}
-        {opportunity.seller_name && (
-          <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground">{opportunity.seller_name}</span>
-            </div>
-            {opportunity.seller_credibility_score && (
-              <Badge className={cn('text-xs', getCredibilityColor(opportunity.seller_credibility_score))}>
-                Score: {opportunity.seller_credibility_score}/10
-              </Badge>
+        <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center gap-2">
+            <User className="h-4 w-4 text-muted-foreground" />
+            {revealed ? (
+              <span className="text-muted-foreground">{opportunity.seller_name || 'Unknown seller'}</span>
+            ) : (
+              <span className="text-muted-foreground flex items-center gap-1">
+                <Lock className="h-3 w-3" />
+                <span className="blur-sm select-none">Hidden Seller</span>
+              </span>
             )}
           </div>
-        )}
+          {revealed && opportunity.seller_credibility_score && (
+            <Badge className={cn('text-xs', getCredibilityColor(opportunity.seller_credibility_score))}>
+              Score: {opportunity.seller_credibility_score}/10
+            </Badge>
+          )}
+        </div>
       </CardContent>
 
       <CardFooter className="p-4 pt-0 gap-2">
@@ -153,17 +163,26 @@ export function OpportunityCard({
           <Bookmark className={cn('h-4 w-4 mr-1', isSaved && 'fill-current')} />
           {isSaved ? 'Saved' : 'Save'}
         </Button>
-        <Button
-          size="sm"
-          className="flex-1"
-          onClick={(e) => {
-            e.stopPropagation();
-            onContact?.(opportunity);
-          }}
-        >
-          <ExternalLink className="h-4 w-4 mr-1" />
-          Contact
-        </Button>
+        {revealed ? (
+          <Button
+            size="sm"
+            className="flex-1"
+            onClick={(e) => {
+              e.stopPropagation();
+              onContact?.(opportunity);
+            }}
+          >
+            <ExternalLink className="h-4 w-4 mr-1" />
+            Contact
+          </Button>
+        ) : (
+          <div onClick={(e) => e.stopPropagation()} className="flex-1">
+            <RevealButton
+              opportunityId={opportunity.id}
+              className="w-full"
+            />
+          </div>
+        )}
         <Button
           variant="ghost"
           size="icon"
