@@ -1,9 +1,11 @@
-import { ExternalLink, Bookmark, X, TrendingUp, MapPin, Phone, User } from 'lucide-react';
+import { ExternalLink, Bookmark, X, TrendingUp, MapPin, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { useCredits } from '@/hooks/useCredits';
+import { RevealButton } from '@/components/credits/RevealButton';
 
 interface Opportunity {
   id: string;
@@ -25,8 +27,11 @@ interface MapSidebarProps {
 }
 
 export function MapSidebar({ opportunity, onClose, onSave }: MapSidebarProps) {
+  const { isRevealed } = useCredits();
+
   if (!opportunity) return null;
 
+  const revealed = isRevealed(opportunity.id);
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-KE', {
       style: 'currency',
@@ -111,17 +116,27 @@ export function MapSidebar({ opportunity, onClose, onSave }: MapSidebarProps) {
             <Bookmark className="h-4 w-4 mr-1.5" />
             Save
           </Button>
-          {opportunity.source_url && (
-            <Button 
-              size="sm" 
+          {revealed ? (
+            opportunity.source_url && (
+              <Button 
+                size="sm" 
+                className="flex-1"
+                asChild
+              >
+                <a href={opportunity.source_url} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4 mr-1.5" />
+                  View Listing
+                </a>
+              </Button>
+            )
+          ) : (
+            <RevealButton
+              opportunityId={opportunity.id}
               className="flex-1"
-              asChild
             >
-              <a href={opportunity.source_url} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-4 w-4 mr-1.5" />
-                View Listing
-              </a>
-            </Button>
+              <Lock className="h-4 w-4 mr-1.5" />
+              Reveal Listing
+            </RevealButton>
           )}
         </div>
       </CardContent>
