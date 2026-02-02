@@ -43,6 +43,47 @@ async function verifyAdminUser(req: Request): Promise<{ userId: string } | { err
   return { userId };
 }
 
+function validateUrl(url: string): { valid: boolean; error?: string } {
+  try {
+    const parsed = new URL(url);
+    
+    // Only allow http/https
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return { valid: false, error: 'Only HTTP/HTTPS protocols allowed' };
+    }
+    
+    // Block private IP ranges and localhost
+    const hostname = parsed.hostname.toLowerCase();
+    const privateRanges = [
+      /^127\./,                    // 127.0.0.0/8
+      /^10\./,                     // 10.0.0.0/8
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./, // 172.16.0.0/12
+      /^192\.168\./,               // 192.168.0.0/16
+      /^169\.254\./,               // 169.254.0.0/16 (link-local/metadata)
+      /^0\./,                      // 0.0.0.0/8
+    ];
+    
+    const blockedHostnames = [
+      'localhost',
+      '127.0.0.1',
+      '0.0.0.0',
+      'metadata.google.internal',
+      'metadata.google.com',
+    ];
+    
+    if (blockedHostnames.includes(hostname) || 
+        hostname.endsWith('.local') ||
+        hostname.endsWith('.internal') ||
+        privateRanges.some(pattern => pattern.test(hostname))) {
+      return { valid: false, error: 'Private/internal URLs not allowed' };
+    }
+    
+    return { valid: true };
+  } catch (e) {
+    return { valid: false, error: 'Invalid URL format' };
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -79,6 +120,15 @@ Deno.serve(async (req) => {
     let formattedUrl = url.trim();
     if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
       formattedUrl = `https://${formattedUrl}`;
+    }
+
+    // Validate URL to prevent SSRF
+    const validation = validateUrl(formattedUrl);
+    if (!validation.valid) {
+      return new Response(
+        JSON.stringify({ success: false, error: validation.error }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     console.log('Mapping URL:', formattedUrl, 'by user:', authResult.userId);
