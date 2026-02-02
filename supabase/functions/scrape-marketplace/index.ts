@@ -155,19 +155,32 @@ Deno.serve(async (req) => {
         // Filter to likely listing URLs (not home, about, contact pages)
         const listingUrls = allUrls.filter(url => {
           const lower = url.toLowerCase();
-          return !lower.includes('/about') && 
-                 !lower.includes('/contact') && 
-                 !lower.includes('/privacy') &&
-                 !lower.includes('/terms') &&
-                 !lower.includes('/faq') &&
-                 !lower.includes('/help') &&
-                 (lower.includes('/listing') || 
-                  lower.includes('/property') || 
-                  lower.includes('/car') ||
-                  lower.includes('/vehicle') ||
-                  lower.includes('/house') ||
-                  lower.includes('/apartment') ||
-                  /\/\d+/.test(url)); // URLs with IDs
+          // Exclude common non-listing pages
+          if (lower.includes('/about') || 
+              lower.includes('/contact') || 
+              lower.includes('/privacy') ||
+              lower.includes('/terms') ||
+              lower.includes('/faq') ||
+              lower.includes('/help') ||
+              lower.includes('/login') ||
+              lower.includes('/register')) {
+            return false;
+          }
+          // Include marketplace and auction listing patterns
+          return lower.includes('/listing') || 
+                 lower.includes('/property') || 
+                 lower.includes('/car') ||
+                 lower.includes('/vehicle') ||
+                 lower.includes('/house') ||
+                 lower.includes('/apartment') ||
+                 // Auction-specific patterns
+                 lower.includes('/lot') ||
+                 lower.includes('/auction') ||
+                 lower.includes('/bid') ||
+                 lower.includes('/sale') ||
+                 lower.includes('/hammer') ||
+                 lower.includes('/item') ||
+                 /\/\d+/.test(url); // URLs with IDs
         }).slice(0, limit);
 
         console.log(`Found ${listingUrls.length} potential listings for ${source.name}`);

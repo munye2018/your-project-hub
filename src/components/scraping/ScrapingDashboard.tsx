@@ -16,7 +16,8 @@ import {
   Home, 
   Building2, 
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Gavel
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -47,6 +48,7 @@ const platformIcons = {
   residential: Home,
   commercial: Building2,
   general: Globe,
+  auction: Gavel,
 };
 
 export function ScrapingDashboard() {
@@ -241,7 +243,8 @@ export function ScrapingDashboard() {
                       source.platform_type === 'vehicle' && 'bg-blue-100 text-blue-600 dark:bg-blue-950',
                       source.platform_type === 'residential' && 'bg-green-100 text-green-600 dark:bg-green-950',
                       source.platform_type === 'commercial' && 'bg-amber-100 text-amber-600 dark:bg-amber-950',
-                      source.platform_type === 'general' && 'bg-purple-100 text-purple-600 dark:bg-purple-950'
+                      source.platform_type === 'general' && 'bg-purple-100 text-purple-600 dark:bg-purple-950',
+                      source.platform_type === 'auction' && 'bg-rose-100 text-rose-600 dark:bg-rose-950'
                     )}>
                       <Icon className="h-4 w-4" />
                     </div>

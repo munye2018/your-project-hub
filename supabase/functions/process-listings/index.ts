@@ -133,8 +133,21 @@ Deno.serve(async (req) => {
         // Use AI to analyze the listing
         let analysisResult = null;
         
+        // Determine if this is an auction listing
+        const isAuction = listing.raw_data?.platform_type === 'auction' || 
+                          listing.source_url?.toLowerCase().includes('auction');
+        
         if (lovableApiKey) {
+          const auctionGuidance = isAuction ? `
+AUCTION LISTING GUIDELINES:
+- This is an AUCTION listing - the listed_price is typically the starting bid or reserve price
+- Estimate the likely hammer price at 60-85% of retail market value
+- Factor in buyer's premium (typically 5-10% on top of hammer price) in your cost calculations
+- Note: Auction items often require immediate payment and collection
+- Be conservative with estimated_value as auction conditions vary` : '';
+
           const aiPrompt = `You are a Kenyan real estate and vehicle market expert. Analyze this listing and extract structured data.
+${auctionGuidance}
 
 LISTING CONTENT:
 ${pageContent.slice(0, 4000)}
@@ -147,8 +160,8 @@ Extract and return a JSON object with these fields:
   "asset_type": "vehicle" | "residential" | "commercial",
   "title": "listing title",
   "description": "brief description",
-  "listed_price": number in KES,
-  "estimated_value": number in KES (your estimate of true market value),
+  "listed_price": number in KES${isAuction ? ' (starting bid or reserve price)' : ''},
+  "estimated_value": number in KES (your estimate of true market value${isAuction ? ', factoring in typical auction discounts' : ''}),
   "county": "county name",
   "city": "city/town name or null",
   "seller_name": "seller name or null",
@@ -156,7 +169,13 @@ Extract and return a JSON object with these fields:
   "ai_confidence_score": 0-100,
   "improvement_recommendations": [
     {"item": "improvement name", "description": "what to do", "estimated_cost": number, "potential_value_add": number, "priority": "low"|"medium"|"high"}
-  ]
+  ]${isAuction ? `,
+  "auction_details": {
+    "starting_bid": number or null,
+    "reserve_price": number or null,
+    "estimated_hammer_price": number,
+    "buyers_premium_percent": 5-10
+  }` : ''}
 }
 
 If you cannot extract the price, use 0. If location is unclear, default to "Nairobi".
@@ -190,8 +209,16 @@ Return ONLY the JSON object, no other text.`;
         // Create opportunity from analysis or use basic extraction
         const listedPrice = analysisResult?.listed_price || 0;
         const estimatedValue = analysisResult?.estimated_value || listedPrice;
-        const profitPotential = estimatedValue - listedPrice;
-        const profitPercentage = listedPrice > 0 ? ((profitPotential / listedPrice) * 100) : 0;
+        
+        // For auctions, factor in buyer's premium to calculate true cost
+        let effectiveCost = listedPrice;
+        if (isAuction && analysisResult?.auction_details) {
+          const buyersPremium = (analysisResult.auction_details.buyers_premium_percent || 7) / 100;
+          effectiveCost = listedPrice * (1 + buyersPremium);
+        }
+        
+        const profitPotential = estimatedValue - effectiveCost;
+        const profitPercentage = effectiveCost > 0 ? ((profitPotential / effectiveCost) * 100) : 0;
         const improvements = analysisResult?.improvement_recommendations || [];
         const improvementCost = improvements.reduce(
           (sum: number, rec: { estimated_cost?: number }) => sum + (rec.estimated_cost || 0), 
@@ -211,7 +238,7 @@ Return ONLY the JSON object, no other text.`;
           seller_name: analysisResult?.seller_name || null,
           seller_contact: analysisResult?.seller_contact || null,
           source_url: listing.source_url,
-          source_platform: listing.raw_data?.source || 'Unknown',
+          source_platform: isAuction ? `Auction: ${listing.raw_data?.source || 'Unknown'}` : (listing.raw_data?.source || 'Unknown'),
           ai_confidence_score: analysisResult?.ai_confidence_score || 50,
           improvement_recommendations: improvements,
           improvement_cost_estimate: improvementCost,
