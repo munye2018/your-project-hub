@@ -89,6 +89,13 @@ export type Database = {
             referencedRelation: "opportunities"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "notifications_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       opportunities: {
@@ -203,6 +210,13 @@ export type Database = {
             columns: ["opportunity_id"]
             isOneToOne: false
             referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunity_reveals_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities_public"
             referencedColumns: ["id"]
           },
         ]
@@ -334,6 +348,13 @@ export type Database = {
             referencedRelation: "opportunities"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "raw_listings_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       regional_pricing: {
@@ -409,6 +430,13 @@ export type Database = {
             columns: ["opportunity_id"]
             isOneToOne: false
             referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saved_opportunities_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities_public"
             referencedColumns: ["id"]
           },
         ]
@@ -552,7 +580,90 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      opportunities_public: {
+        Row: {
+          ai_confidence_score: number | null
+          asset_type: string | null
+          city: string | null
+          county: string | null
+          created_at: string | null
+          description: string | null
+          district: string | null
+          estimated_value: number | null
+          id: string | null
+          image_url: string | null
+          improvement_cost_estimate: number | null
+          improvement_recommendations: Json | null
+          listed_price: number | null
+          net_profit_potential: number | null
+          profit_percentage: number | null
+          profit_potential: number | null
+          scraped_at: string | null
+          seller_contact: string | null
+          seller_credibility_score: number | null
+          seller_name: string | null
+          source_platform: string | null
+          source_url: string | null
+          status: string | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          ai_confidence_score?: number | null
+          asset_type?: string | null
+          city?: string | null
+          county?: string | null
+          created_at?: string | null
+          description?: string | null
+          district?: string | null
+          estimated_value?: number | null
+          id?: string | null
+          image_url?: string | null
+          improvement_cost_estimate?: number | null
+          improvement_recommendations?: Json | null
+          listed_price?: number | null
+          net_profit_potential?: number | null
+          profit_percentage?: number | null
+          profit_potential?: number | null
+          scraped_at?: string | null
+          seller_contact?: never
+          seller_credibility_score?: number | null
+          seller_name?: never
+          source_platform?: string | null
+          source_url?: never
+          status?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          ai_confidence_score?: number | null
+          asset_type?: string | null
+          city?: string | null
+          county?: string | null
+          created_at?: string | null
+          description?: string | null
+          district?: string | null
+          estimated_value?: number | null
+          id?: string | null
+          image_url?: string | null
+          improvement_cost_estimate?: number | null
+          improvement_recommendations?: Json | null
+          listed_price?: number | null
+          net_profit_potential?: number | null
+          profit_percentage?: number | null
+          profit_potential?: number | null
+          scraped_at?: string | null
+          seller_contact?: never
+          seller_credibility_score?: number | null
+          seller_name?: never
+          source_platform?: string | null
+          source_url?: never
+          status?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_tier_credit_limit: { Args: { tier: string }; Returns: number }
