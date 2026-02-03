@@ -18,7 +18,6 @@ interface Opportunity {
   profit_percentage: number | null;
   county: string;
   city: string | null;
-  source_url: string | null;
   status: string | null;
 }
 
@@ -104,15 +103,20 @@ export function KenyaMap({
           .select('*')
           .not('latitude', 'is', null);
 
-        // Fetch opportunities
-        const { data: opportunitiesData } = await supabase
-          .from('opportunities')
-          .select('id, title, asset_type, listed_price, estimated_value, profit_percentage, county, city, source_url, status')
+        // Fetch opportunities from the secure view that masks seller info
+        // Use explicit table name with type assertion since it's a view
+        const { data: opportunitiesData, error: oppError } = await supabase
+          .from('opportunities_public')
+          .select('id, title, asset_type, listed_price, estimated_value, profit_percentage, county, city, status')
           .in('asset_type', selectedAssetTypes)
           .gte('profit_percentage', minProfitPercentage);
 
+        if (oppError) {
+          console.error('Error fetching opportunities:', oppError);
+        }
+
         setCounties((countiesData as County[]) || []);
-        setOpportunities((opportunitiesData as Opportunity[]) || []);
+        setOpportunities((opportunitiesData as unknown as Opportunity[]) || []);
       } catch (error) {
         console.error('Error fetching map data:', error);
       } finally {
