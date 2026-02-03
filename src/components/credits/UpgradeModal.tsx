@@ -60,7 +60,7 @@ const tiers: TierInfo[] = [
     name: 'Standard',
     tier: 'standard',
     reveals: '10',
-    price: 'KES 900',
+    price: 'KES 1,000',
     priceNote: '/month',
     icon: <Crown className="h-5 w-5" />,
     features: [
