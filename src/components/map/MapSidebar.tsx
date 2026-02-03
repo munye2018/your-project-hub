@@ -16,8 +16,9 @@ interface Opportunity {
   profit_percentage: number | null;
   county: string;
   city: string | null;
-  source_url: string | null;
   status: string | null;
+  // source_url is only available after reveal
+  source_url?: string | null;
 }
 
 interface MapSidebarProps {
