@@ -1,4 +1,5 @@
-import { Check, Sparkles, Zap, Crown, Star } from 'lucide-react';
+import { useState } from 'react';
+import { Check, Sparkles, Zap, Crown, Star, Loader2, Settings } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -9,6 +10,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useSubscription } from '@/hooks/useSubscription';
+import { useAuth } from '@/hooks/useAuth';
 import type { SubscriptionTier } from '@/types/opportunity';
 
 interface UpgradeModalProps {
@@ -91,11 +94,29 @@ const tiers: TierInfo[] = [
 ];
 
 export function UpgradeModal({ open, onOpenChange, currentTier }: UpgradeModalProps) {
-  const handleSelectPlan = (tier: SubscriptionTier) => {
-    // TODO: Integrate with Stripe or other payment processor
-    console.log('Selected plan:', tier);
-    // For now, just show a message
-    alert(`Payment integration coming soon! Selected: ${tier} plan`);
+  const { user } = useAuth();
+  const { checkout, openPortal, subscribed } = useSubscription(user?.id);
+  const [loadingTier, setLoadingTier] = useState<SubscriptionTier | null>(null);
+  const [portalLoading, setPortalLoading] = useState(false);
+
+  const handleSelectPlan = async (tier: SubscriptionTier) => {
+    if (tier === 'free') return;
+    
+    setLoadingTier(tier);
+    try {
+      await checkout(tier as Exclude<SubscriptionTier, 'free'>);
+    } finally {
+      setLoadingTier(null);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    setPortalLoading(true);
+    try {
+      await openPortal();
+    } finally {
+      setPortalLoading(false);
+    }
   };
 
   return (
@@ -110,10 +131,28 @@ export function UpgradeModal({ open, onOpenChange, currentTier }: UpgradeModalPr
           </DialogDescription>
         </DialogHeader>
 
+        {subscribed && (
+          <div className="flex justify-center mb-4">
+            <Button
+              variant="outline"
+              onClick={handleManageSubscription}
+              disabled={portalLoading}
+            >
+              {portalLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Settings className="h-4 w-4 mr-2" />
+              )}
+              Manage Subscription
+            </Button>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
           {tiers.map((tierInfo) => {
             const isCurrent = tierInfo.tier === currentTier;
             const isDowngrade = getTierRank(tierInfo.tier) < getTierRank(currentTier);
+            const isLoading = loadingTier === tierInfo.tier;
 
             return (
               <div
@@ -134,8 +173,8 @@ export function UpgradeModal({ open, onOpenChange, currentTier }: UpgradeModalPr
                   <div className={cn(
                     'p-2 rounded-lg',
                     tierInfo.tier === 'hustler' && 'bg-primary/10 text-primary',
-                    tierInfo.tier === 'standard' && 'bg-amber-500/10 text-amber-500',
-                    tierInfo.tier === 'basic' && 'bg-blue-500/10 text-blue-500',
+                    tierInfo.tier === 'standard' && 'bg-primary/10 text-primary',
+                    tierInfo.tier === 'basic' && 'bg-secondary text-secondary-foreground',
                     tierInfo.tier === 'free' && 'bg-muted text-muted-foreground',
                   )}>
                     {tierInfo.icon}
@@ -169,10 +208,20 @@ export function UpgradeModal({ open, onOpenChange, currentTier }: UpgradeModalPr
                 <Button
                   variant={tierInfo.popular ? 'default' : 'outline'}
                   className="w-full"
-                  disabled={isCurrent || isDowngrade}
+                  disabled={isCurrent || isDowngrade || tierInfo.tier === 'free' || isLoading}
                   onClick={() => handleSelectPlan(tierInfo.tier)}
                 >
-                  {isCurrent ? 'Current Plan' : isDowngrade ? 'Downgrade' : 'Select Plan'}
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : isCurrent ? (
+                    'Current Plan'
+                  ) : isDowngrade ? (
+                    'Downgrade'
+                  ) : tierInfo.tier === 'free' ? (
+                    'Free Tier'
+                  ) : (
+                    'Select Plan'
+                  )}
                 </Button>
               </div>
             );
