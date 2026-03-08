@@ -20,10 +20,9 @@ async function verifyAdminUser(req: Request): Promise<{ userId: string } | { err
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
   const supabase = createClient(supabaseUrl, supabaseAnonKey, { global: { headers: { Authorization: authHeader } } });
-  const token = authHeader.replace('Bearer ', '');
-  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-  if (claimsError || !claimsData?.claims) return { error: 'Unauthorized', status: 401 };
-  const userId = claimsData.claims.sub as string;
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) return { error: 'Unauthorized', status: 401 };
+  const userId = user.id;
   const { data: isAdmin, error: roleError } = await supabase.rpc('is_admin', { _user_id: userId });
   if (roleError) return { error: 'Failed to verify user role', status: 500 };
   if (!isAdmin) return { error: 'Admin access required', status: 403 };
