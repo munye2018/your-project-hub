@@ -142,6 +142,9 @@ export interface FilterOptions {
   counties: string[];
   minProfit: number;
   maxProfit: number;
+  budgetMin: number;
+  budgetMax: number;
+  maxDistanceKm: number;
   status: OpportunityStatus[];
   sortBy: 'profit' | 'date' | 'price' | 'credibility';
   sortOrder: 'asc' | 'desc';
