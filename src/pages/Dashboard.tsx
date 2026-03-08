@@ -36,7 +36,7 @@ const mockOpportunities: Opportunity[] = [
     asset_type: 'vehicle',
     title: '2019 Toyota Land Cruiser V8',
     description: 'Well-maintained SUV with full service history',
-    image_url: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=400',
+    image_url: null,
     listed_price: 4500000,
     estimated_value: 6200000,
     profit_potential: 1700000,
