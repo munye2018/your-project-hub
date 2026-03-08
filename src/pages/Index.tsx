@@ -5,7 +5,7 @@ import Dashboard from './Dashboard';
 import { Loader2 } from 'lucide-react';
 
 export default function Index() {
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
