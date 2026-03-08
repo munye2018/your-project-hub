@@ -88,6 +88,12 @@ export interface UserProfile {
   notifications_enabled: boolean;
   sound_enabled: boolean;
   push_enabled: boolean;
+  budget_min: number;
+  budget_max: number | null;
+  onboarding_completed: boolean;
+  user_latitude: number | null;
+  user_longitude: number | null;
+  search_radius_km: number;
   created_at: string;
   updated_at: string;
 }
@@ -136,6 +142,9 @@ export interface FilterOptions {
   counties: string[];
   minProfit: number;
   maxProfit: number;
+  budgetMin: number;
+  budgetMax: number;
+  maxDistanceKm: number;
   status: OpportunityStatus[];
   sortBy: 'profit' | 'date' | 'price' | 'credibility';
   sortOrder: 'asc' | 'desc';

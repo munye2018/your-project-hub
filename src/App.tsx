@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import MapView from "./pages/MapView";
 import ScrapingAdmin from "./pages/ScrapingAdmin";
+import Onboarding from "./pages/Onboarding";
 import SubscriptionSuccess from "./pages/SubscriptionSuccess";
 import NotFound from "./pages/NotFound";
 
@@ -24,6 +25,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/map" element={<MapView />} />
+            <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/scraping" element={<ScrapingAdmin />} />
             <Route path="/subscription-success" element={<SubscriptionSuccess />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

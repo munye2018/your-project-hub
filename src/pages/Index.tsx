@@ -5,14 +5,16 @@ import Dashboard from './Dashboard';
 import { Loader2 } from 'lucide-react';
 
 export default function Index() {
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!loading && !user) {
       navigate('/auth');
+    } else if (!loading && user && profile && !profile.onboarding_completed) {
+      navigate('/onboarding');
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, profile, navigate]);
 
   if (loading) {
     return (
