@@ -225,52 +225,70 @@ export type Database = {
         Row: {
           alert_frequency: string | null
           avatar_url: string | null
+          budget_max: number | null
+          budget_min: number | null
           created_at: string
           email: string | null
           full_name: string | null
           id: string
           notifications_enabled: boolean | null
+          onboarding_completed: boolean | null
           preferred_asset_types: string[] | null
           preferred_regions: string[] | null
           push_enabled: boolean | null
           role: string
+          search_radius_km: number | null
           sound_enabled: boolean | null
           updated_at: string
           user_id: string
+          user_latitude: number | null
+          user_longitude: number | null
           whatsapp_number: string | null
         }
         Insert: {
           alert_frequency?: string | null
           avatar_url?: string | null
+          budget_max?: number | null
+          budget_min?: number | null
           created_at?: string
           email?: string | null
           full_name?: string | null
           id?: string
           notifications_enabled?: boolean | null
+          onboarding_completed?: boolean | null
           preferred_asset_types?: string[] | null
           preferred_regions?: string[] | null
           push_enabled?: boolean | null
           role?: string
+          search_radius_km?: number | null
           sound_enabled?: boolean | null
           updated_at?: string
           user_id: string
+          user_latitude?: number | null
+          user_longitude?: number | null
           whatsapp_number?: string | null
         }
         Update: {
           alert_frequency?: string | null
           avatar_url?: string | null
+          budget_max?: number | null
+          budget_min?: number | null
           created_at?: string
           email?: string | null
           full_name?: string | null
           id?: string
           notifications_enabled?: boolean | null
+          onboarding_completed?: boolean | null
           preferred_asset_types?: string[] | null
           preferred_regions?: string[] | null
           push_enabled?: boolean | null
           role?: string
+          search_radius_km?: number | null
           sound_enabled?: boolean | null
           updated_at?: string
           user_id?: string
+          user_latitude?: number | null
+          user_longitude?: number | null
           whatsapp_number?: string | null
         }
         Relationships: []
