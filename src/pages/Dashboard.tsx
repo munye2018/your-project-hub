@@ -117,7 +117,7 @@ const mockOpportunities: Opportunity[] = [
     asset_type: 'vehicle',
     title: '2020 Mercedes-Benz C200',
     description: 'Low mileage, single owner, excellent condition',
-    image_url: 'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=400',
+    image_url: null,
     listed_price: 3800000,
     estimated_value: 4800000,
     profit_potential: 1000000,
