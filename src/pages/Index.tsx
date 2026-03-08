@@ -11,8 +11,10 @@ export default function Index() {
   useEffect(() => {
     if (!loading && !user) {
       navigate('/auth');
+    } else if (!loading && user && profile && !profile.onboarding_completed) {
+      navigate('/onboarding');
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, profile, navigate]);
 
   if (loading) {
     return (
