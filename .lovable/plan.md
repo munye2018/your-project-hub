@@ -1,185 +1,99 @@
 
-# Stripe Subscription Integration Plan
+
+# Categorized Browse, Budget Onboarding, and Location-Based Search
 
 ## Overview
-Create the Hustler tier Stripe product and implement a complete Stripe checkout flow with subscription verification and management.
+Three features: (1) organize opportunities into searchable categories, (2) add a post-signup onboarding flow for budget selection, (3) allow optional location sharing with a distance limit for nearby results.
 
 ---
 
-## Phase 1: Create Hustler Stripe Product
+## 1. Database Changes
 
-Create the final subscription tier in Stripe:
-
-| Tier | Product Name | Price (KES) | Stripe Amount (cents) | Features |
-|------|--------------|-------------|----------------------|----------|
-| Hustler | Hustler | 1,999/mo | 199900 | Unlimited reveals |
-
----
-
-## Phase 2: Stripe Products Configuration
-
-Create a tier configuration file to map Stripe products to app tiers:
-
-**File: `src/config/stripe.ts`**
-
-```text
-+-- Tier mapping object
-|   +-- basic: { price_id, product_id, credits: 5 }
-|   +-- standard: { price_id, product_id, credits: 10 }
-|   +-- hustler: { price_id, product_id, credits: unlimited }
-```
-
-This centralizes all Stripe product IDs and tier information.
-
----
-
-## Phase 3: Backend Functions
-
-### 3.1 Create Checkout Function
-**File: `supabase/functions/create-checkout/index.ts`**
-
-Creates a Stripe checkout session for authenticated users:
-- Accepts `price_id` parameter
-- Looks up or creates Stripe customer by email
-- Creates checkout session with success/cancel URLs
-- Returns session URL for redirect
-
-### 3.2 Subscription Verification Function
-**File: `supabase/functions/check-subscription/index.ts`**
-
-Verifies user subscription status from Stripe:
-- Queries Stripe by user email
-- Returns subscription status, product ID, and end date
-- Used on login, page load, and periodically
-
-### 3.3 Customer Portal Function
-**File: `supabase/functions/customer-portal/index.ts`**
-
-Enables subscription management:
-- Creates Stripe billing portal session
-- Allows users to cancel, upgrade, or manage payment methods
-
----
-
-## Phase 4: Frontend Integration
-
-### 4.1 Subscription Hook
-**File: `src/hooks/useSubscription.ts`**
-
-New hook to manage subscription state:
-- Calls `check-subscription` on auth changes
-- Tracks subscribed status, tier, and end date
-- Auto-refreshes every 60 seconds
-- Provides `checkout()` and `openPortal()` methods
-
-### 4.2 Update AuthContext
-**File: `src/hooks/useAuth.tsx`**
-
-Add subscription state to auth context:
-- Store subscription tier from Stripe
-- Sync with `user_credits` table on subscription changes
-- Make subscription info available app-wide
-
-### 4.3 Update UpgradeModal
-**File: `src/components/credits/UpgradeModal.tsx`**
-
-Connect to Stripe checkout:
-- Replace placeholder `handleSelectPlan` with real checkout
-- Add loading state during checkout creation
-- Handle errors gracefully
-- Show "Manage Subscription" button for subscribed users
-
-### 4.4 Subscription Success Page
-**File: `src/pages/SubscriptionSuccess.tsx`**
-
-Handle post-checkout redirect:
-- Show success message
-- Trigger subscription verification
-- Update local credit state
-- Redirect to dashboard
-
----
-
-## Phase 5: Database Sync
-
-When subscription changes are detected:
-1. Update `user_credits.subscription_tier` based on Stripe product
-2. Reset `credits_remaining` to tier limit
-3. Update `subscription_started_at` timestamp
-
----
-
-## Config File Update
-
-**File: `supabase/config.toml`**
-
-Add new functions:
-```text
-[functions.create-checkout]
-verify_jwt = false
-
-[functions.check-subscription]
-verify_jwt = false
-
-[functions.customer-portal]
-verify_jwt = false
+Add columns to `profiles` table:
+```sql
+ALTER TABLE profiles 
+  ADD COLUMN budget_min numeric DEFAULT 0,
+  ADD COLUMN budget_max numeric DEFAULT NULL,
+  ADD COLUMN onboarding_completed boolean DEFAULT false,
+  ADD COLUMN user_latitude numeric DEFAULT NULL,
+  ADD COLUMN user_longitude numeric DEFAULT NULL,
+  ADD COLUMN search_radius_km integer DEFAULT 50;
 ```
 
 ---
 
-## Subscription Flow Diagram
+## 2. Onboarding Flow
 
-```text
-User clicks "Select Plan"
-         |
-         v
-UpgradeModal calls create-checkout
-         |
-         v
-Edge function creates Stripe session
-         |
-         v
-User redirected to Stripe Checkout
-         |
-         v
-User completes payment
-         |
-         v
-Redirected to /subscription-success
-         |
-         v
-check-subscription called
-         |
-         v
-user_credits table updated
-         |
-         v
-Credits badge shows new tier
-```
+**New file: `src/pages/Onboarding.tsx`**
+
+Multi-step wizard shown after signup (when `profile.onboarding_completed` is false):
+
+- **Step 1 -- Budget Range**: Select from predefined ranges (e.g., Under KES 1M, 1-5M, 5-15M, 15-50M, 50M+) or set custom min/max with sliders.
+- **Step 2 -- Asset Categories**: Pick interested asset types (vehicles, residential, commercial) -- reuses existing `preferred_asset_types` on profile.
+- **Step 3 -- Location (optional)**: Toggle to share location via browser Geolocation API. If enabled, show a slider for max search radius (10-200 km). Show a small map preview of their location.
+- On completion: update profile with budget, location, radius, and set `onboarding_completed = true`. Redirect to dashboard.
+
+**Modify `src/pages/Index.tsx`**: After auth check, if `profile.onboarding_completed === false`, redirect to `/onboarding` instead of showing Dashboard.
+
+**Modify `src/App.tsx`**: Add `/onboarding` route.
 
 ---
 
-## Files to Create/Modify
+## 3. Categorized Browsing with Search
+
+**Modify `src/pages/Dashboard.tsx`**:
+
+Replace the current flat tabs with a category-first layout:
+- Add a prominent search bar at the top with type-ahead filtering across title, description, county, and asset type.
+- Group opportunities by `asset_type` into collapsible category sections (Vehicles, Residential, Commercial), each showing a count badge.
+- Within each category, show a horizontal scrollable row of cards or a grid depending on screen size.
+- Existing `FilterBar` remains but is enhanced with a budget range filter that defaults to the user's onboarding budget.
+
+**Modify `src/components/dashboard/FilterBar.tsx`**:
+- Add budget range filter (min/max price inputs or slider) that filters by `listed_price`.
+- Add location distance filter (if user shared location) showing "Within X km" slider.
+
+---
+
+## 4. Budget-Filtered Dashboard
+
+**Modify `src/pages/Dashboard.tsx`**:
+- On load, read `profile.budget_min` and `profile.budget_max` to set default price filters.
+- Filter `listed_price` within budget range.
+- Show a banner if no results match budget: "No opportunities in your budget. Adjust filters?"
+
+---
+
+## 5. Location-Based Filtering
+
+**Modify `src/pages/Dashboard.tsx`**:
+- If user has `user_latitude`/`user_longitude` set, calculate distance to each opportunity's county center (using `kenya_counties` lat/lng).
+- Filter by `search_radius_km`.
+- Add a "Near You" tab/section at the top showing closest opportunities first.
+
+**Utility function** in `src/lib/utils.ts`:
+- `haversineDistance(lat1, lon1, lat2, lon2)` -- returns km between two coordinates.
+
+---
+
+## 6. Update Types
+
+**Modify `src/types/opportunity.ts`**:
+- Add `budget_min`, `budget_max`, `onboarding_completed`, `user_latitude`, `user_longitude`, `search_radius_km` to `UserProfile`.
+- Add `budgetMin`, `budgetMax`, `maxDistanceKm` to `FilterOptions`.
+
+---
+
+## Files Summary
 
 | File | Action |
 |------|--------|
-| `src/config/stripe.ts` | Create |
-| `supabase/functions/create-checkout/index.ts` | Create |
-| `supabase/functions/check-subscription/index.ts` | Create |
-| `supabase/functions/customer-portal/index.ts` | Create |
-| `src/hooks/useSubscription.ts` | Create |
-| `src/pages/SubscriptionSuccess.tsx` | Create |
-| `src/components/credits/UpgradeModal.tsx` | Modify |
-| `src/hooks/useAuth.tsx` | Modify |
-| `src/App.tsx` | Modify (add route) |
-| `supabase/config.toml` | Modify |
+| `profiles` table | Migration: add 5 columns |
+| `src/pages/Onboarding.tsx` | Create |
+| `src/pages/Index.tsx` | Modify (redirect if not onboarded) |
+| `src/pages/Dashboard.tsx` | Modify (categorized layout, budget/location defaults) |
+| `src/components/dashboard/FilterBar.tsx` | Modify (budget + distance filters) |
+| `src/types/opportunity.ts` | Modify (new profile/filter fields) |
+| `src/lib/utils.ts` | Modify (add haversine function) |
+| `src/App.tsx` | Modify (add /onboarding route) |
 
----
-
-## Technical Notes
-
-- STRIPE_SECRET_KEY is already configured in backend secrets
-- All edge functions use CORS headers for browser compatibility
-- JWT validation happens in code (verify_jwt = false in config)
-- Checkout opens in new tab by default for better UX
-- Customer Portal requires activation in Stripe Dashboard first
