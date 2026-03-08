@@ -63,7 +63,7 @@ const mockOpportunities: Opportunity[] = [
     asset_type: 'residential',
     title: '3 Bedroom Apartment in Kilimani',
     description: 'Modern apartment with city views, needs minor renovations',
-    image_url: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=400',
+    image_url: null,
     listed_price: 12000000,
     estimated_value: 15500000,
     profit_potential: 3500000,
