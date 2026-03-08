@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Filter, SortAsc, SortDesc, Search, X } from 'lucide-react';
+import { Filter, SortAsc, SortDesc, Search, X, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +19,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { FilterOptions, AssetType } from '@/types/opportunity';
-import { cn } from '@/lib/utils';
 
 interface FilterBarProps {
   filters: FilterOptions;
@@ -27,6 +26,7 @@ interface FilterBarProps {
   counties: string[];
   searchQuery: string;
   onSearchChange: (query: string) => void;
+  hasLocation?: boolean;
 }
 
 const ASSET_TYPES: { value: AssetType; label: string }[] = [
@@ -35,12 +35,19 @@ const ASSET_TYPES: { value: AssetType; label: string }[] = [
   { value: 'commercial', label: 'Commercial' },
 ];
 
+const formatBudget = (v: number) => {
+  if (v >= 1000000) return `${(v / 1000000).toFixed(0)}M`;
+  if (v >= 1000) return `${(v / 1000).toFixed(0)}K`;
+  return String(v);
+};
+
 export function FilterBar({
   filters,
   onFiltersChange,
   counties,
   searchQuery,
   onSearchChange,
+  hasLocation,
 }: FilterBarProps) {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
@@ -69,6 +76,9 @@ export function FilterBar({
       counties: [],
       minProfit: 0,
       maxProfit: 100,
+      budgetMin: 0,
+      budgetMax: 999999999,
+      maxDistanceKm: 200,
       status: [],
       sortBy: 'profit',
       sortOrder: 'desc',
@@ -76,11 +86,13 @@ export function FilterBar({
     onSearchChange('');
   };
 
-  const activeFilterCount = 
-    filters.assetTypes.length + 
-    filters.counties.length + 
-    (filters.minProfit > 0 ? 1 : 0) + 
-    (filters.maxProfit < 100 ? 1 : 0);
+  const activeFilterCount =
+    filters.assetTypes.length +
+    filters.counties.length +
+    (filters.minProfit > 0 ? 1 : 0) +
+    (filters.budgetMin > 0 ? 1 : 0) +
+    (filters.budgetMax < 999999999 ? 1 : 0) +
+    (hasLocation && filters.maxDistanceKm < 200 ? 1 : 0);
 
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -88,7 +100,7 @@ export function FilterBar({
       <div className="relative flex-1 max-w-md">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search opportunities..."
+          placeholder="Search by name, location, category..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           className="pl-9"
@@ -147,6 +159,26 @@ export function FilterBar({
                 </div>
               </div>
 
+              {/* Budget Range */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">
+                  Budget: KES {formatBudget(filters.budgetMin)} – {filters.budgetMax >= 999999999 ? '∞' : `KES ${formatBudget(filters.budgetMax)}`}
+                </Label>
+                <Slider
+                  value={[filters.budgetMin / 1000000, Math.min(filters.budgetMax / 1000000, 100)]}
+                  onValueChange={([min, max]) =>
+                    onFiltersChange({ ...filters, budgetMin: min * 1000000, budgetMax: max >= 100 ? 999999999 : max * 1000000 })
+                  }
+                  min={0}
+                  max={100}
+                  step={1}
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>KES 0</span>
+                  <span>KES 100M+</span>
+                </div>
+              </div>
+
               {/* Profit Range */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">
@@ -161,6 +193,29 @@ export function FilterBar({
                   step={5}
                 />
               </div>
+
+              {/* Distance */}
+              {hasLocation && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium flex items-center gap-1">
+                    <MapPin className="h-3 w-3" />
+                    Within: {filters.maxDistanceKm} km
+                  </Label>
+                  <Slider
+                    value={[filters.maxDistanceKm]}
+                    onValueChange={([v]) =>
+                      onFiltersChange({ ...filters, maxDistanceKm: v })
+                    }
+                    min={10}
+                    max={200}
+                    step={10}
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>10 km</span>
+                    <span>200 km</span>
+                  </div>
+                </div>
+              )}
 
               {/* Counties */}
               <div className="space-y-2">
