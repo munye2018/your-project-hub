@@ -90,7 +90,7 @@ const mockOpportunities: Opportunity[] = [
     asset_type: 'commercial',
     title: 'Commercial Space in Mombasa CBD',
     description: 'Prime location for retail or office use',
-    image_url: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400',
+    image_url: null,
     listed_price: 25000000,
     estimated_value: 32000000,
     profit_potential: 7000000,
