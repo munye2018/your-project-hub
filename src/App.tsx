@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import MapView from "./pages/MapView";
 import ScrapingAdmin from "./pages/ScrapingAdmin";
+import Onboarding from "./pages/Onboarding";
 import SubscriptionSuccess from "./pages/SubscriptionSuccess";
 import NotFound from "./pages/NotFound";
 
