@@ -7,11 +7,8 @@ function getCorsHeaders(req: Request): Record<string, string> {
     'https://lovable.dev',
     'https://id-preview--b7d68dc6-0210-462a-a84a-aa5eade466a0.lovable.app',
   ];
-  
-  // Allow localhost for development
   const isLocalhost = origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:');
   const isAllowed = allowedOrigins.includes(origin) || isLocalhost || origin.endsWith('.lovable.app');
-  
   return {
     'Access-Control-Allow-Origin': isAllowed ? origin : allowedOrigins[0],
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
@@ -23,9 +20,7 @@ interface ScrapingSource {
   name: string;
   platform_type: string;
   base_url: string;
-  config: {
-    search_paths?: string[];
-  };
+  config: { search_paths?: string[] };
 }
 
 async function verifyAdminUser(req: Request): Promise<{ userId: string } | { error: string; status: number }> {
@@ -33,48 +28,65 @@ async function verifyAdminUser(req: Request): Promise<{ userId: string } | { err
   if (!authHeader?.startsWith('Bearer ')) {
     return { error: 'Missing or invalid authorization header', status: 401 };
   }
-
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-  
   const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     global: { headers: { Authorization: authHeader } }
   });
-
   const token = authHeader.replace('Bearer ', '');
   const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-  
   if (claimsError || !claimsData?.claims) {
-    console.error('Auth verification failed:', claimsError);
     return { error: 'Unauthorized', status: 401 };
   }
-
   const userId = claimsData.claims.sub as string;
-  
-  // Check if user has admin role using the is_admin function
   const { data: isAdmin, error: roleError } = await supabase.rpc('is_admin', { _user_id: userId });
-  
-  if (roleError) {
-    console.error('Role check failed:', roleError);
-    return { error: 'Failed to verify user role', status: 500 };
-  }
-
-  if (!isAdmin) {
-    return { error: 'Admin access required', status: 403 };
-  }
-
+  if (roleError) return { error: 'Failed to verify user role', status: 500 };
+  if (!isAdmin) return { error: 'Admin access required', status: 403 };
   return { userId };
+}
+
+// Strict filter: only keep URLs that look like individual listing pages, not category/search pages
+function isIndividualListingUrl(url: string): boolean {
+  const lower = url.toLowerCase();
+
+  // --- Exclude non-listing pages ---
+  const excludePatterns = [
+    '/about', '/contact', '/privacy', '/terms', '/faq', '/help',
+    '/login', '/register', '/signup', '/account', '/profile',
+    '/category/', '/categories/', '/search', '/filter',
+    '/tag/', '/tags/', '/blog/', '/news/', '/press/',
+    '?page=', '&page=', '?sort=', '&sort=', '?order=', '&order=',
+    '/sitemap', '/feed', '/rss',
+  ];
+  if (excludePatterns.some(p => lower.includes(p))) return false;
+
+  // --- Exclude category index pages (URLs ending with broad terms) ---
+  const categoryEndings = [
+    '/cars', '/vehicles', '/properties', '/houses', '/apartments',
+    '/listings', '/results', '/auctions', '/lots', '/sales',
+    '/commercial', '/residential', '/land', '/plots',
+    '/for-sale', '/for-rent', '/to-let',
+  ];
+  // Check if the path ends with a category term (with or without trailing slash)
+  const pathOnly = lower.split('?')[0].replace(/\/$/, '');
+  if (categoryEndings.some(ending => pathOnly.endsWith(ending))) return false;
+
+  // --- Require an individual item identifier ---
+  // Must have a numeric ID segment or a slug-with-ID pattern in the URL
+  const hasNumericId = /\/\d{3,}/.test(url); // At least 3 digits to avoid matching year-like segments
+  const hasSlugWithId = /\/[a-z0-9-]+-\d{3,}/i.test(url); // e.g. /toyota-land-cruiser-12345
+  const hasItemPath = /\/(listing|item|lot|property|car|vehicle|ad|detail|view|product)\/[^/]+/i.test(url);
+
+  return hasNumericId || hasSlugWithId || hasItemPath;
 }
 
 Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
-  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Verify authentication and admin role
     const authResult = await verifyAdminUser(req);
     if ('error' in authResult) {
       return new Response(
@@ -99,17 +111,11 @@ Deno.serve(async (req) => {
 
     console.log('Scrape marketplace initiated by admin user:', authResult.userId);
 
-    // Get source configuration
     let query = supabase.from('scraping_sources').select('*').eq('is_active', true);
-    if (source_id) {
-      query = query.eq('id', source_id);
-    }
+    if (source_id) query = query.eq('id', source_id);
 
     const { data: sources, error: sourcesError } = await query;
-    if (sourcesError) {
-      console.error('Error fetching sources:', sourcesError);
-      throw new Error('Failed to fetch scraping sources');
-    }
+    if (sourcesError) throw new Error('Failed to fetch scraping sources');
 
     if (!sources || sources.length === 0) {
       return new Response(
@@ -123,24 +129,15 @@ Deno.serve(async (req) => {
     for (const source of sources as ScrapingSource[]) {
       console.log(`Processing source: ${source.name}`);
 
-      // Create a new scraping job
       const { data: job, error: jobError } = await supabase
         .from('scraping_jobs')
-        .insert({
-          source_id: source.id,
-          status: 'running',
-          started_at: new Date().toISOString(),
-        })
+        .insert({ source_id: source.id, status: 'running', started_at: new Date().toISOString() })
         .select()
         .single();
 
-      if (jobError) {
-        console.error('Error creating job:', jobError);
-        continue;
-      }
+      if (jobError) { console.error('Error creating job:', jobError); continue; }
 
       try {
-        // Map the marketplace to discover URLs
         const searchPaths = source.config?.search_paths || [''];
         const allUrls: string[] = [];
 
@@ -154,11 +151,7 @@ Deno.serve(async (req) => {
               'Authorization': `Bearer ${firecrawlApiKey}`,
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-              url: mapUrl,
-              limit: Math.min(limit, 100),
-              includeSubdomains: false,
-            }),
+            body: JSON.stringify({ url: mapUrl, limit: Math.min(limit, 100), includeSubdomains: false }),
           });
 
           const mapData = await mapResponse.json();
@@ -167,40 +160,11 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Filter to likely listing URLs (not home, about, contact pages)
-        const listingUrls = allUrls.filter(url => {
-          const lower = url.toLowerCase();
-          // Exclude common non-listing pages
-          if (lower.includes('/about') || 
-              lower.includes('/contact') || 
-              lower.includes('/privacy') ||
-              lower.includes('/terms') ||
-              lower.includes('/faq') ||
-              lower.includes('/help') ||
-              lower.includes('/login') ||
-              lower.includes('/register')) {
-            return false;
-          }
-          // Include marketplace and auction listing patterns
-          return lower.includes('/listing') || 
-                 lower.includes('/property') || 
-                 lower.includes('/car') ||
-                 lower.includes('/vehicle') ||
-                 lower.includes('/house') ||
-                 lower.includes('/apartment') ||
-                 // Auction-specific patterns
-                 lower.includes('/lot') ||
-                 lower.includes('/auction') ||
-                 lower.includes('/bid') ||
-                 lower.includes('/sale') ||
-                 lower.includes('/hammer') ||
-                 lower.includes('/item') ||
-                 /\/\d+/.test(url); // URLs with IDs
-        }).slice(0, limit);
+        // Apply strict individual-listing filter
+        const listingUrls = allUrls.filter(isIndividualListingUrl).slice(0, limit);
 
-        console.log(`Found ${listingUrls.length} potential listings for ${source.name}`);
+        console.log(`Found ${listingUrls.length} individual listings (filtered from ${allUrls.length} URLs) for ${source.name}`);
 
-        // Store raw listings for processing
         if (listingUrls.length > 0) {
           const rawListings = listingUrls.map(url => ({
             job_id: job.id,
@@ -209,56 +173,28 @@ Deno.serve(async (req) => {
             processed: false,
           }));
 
-          const { error: insertError } = await supabase
-            .from('raw_listings')
-            .insert(rawListings);
-
-          if (insertError) {
-            console.error('Error inserting raw listings:', insertError);
-          }
+          const { error: insertError } = await supabase.from('raw_listings').insert(rawListings);
+          if (insertError) console.error('Error inserting raw listings:', insertError);
         }
 
-        // Update job status
         await supabase
           .from('scraping_jobs')
-          .update({
-            status: 'completed',
-            completed_at: new Date().toISOString(),
-            items_found: listingUrls.length,
-          })
+          .update({ status: 'completed', completed_at: new Date().toISOString(), items_found: listingUrls.length })
           .eq('id', job.id);
 
-        // Update source last_scraped_at
         await supabase
           .from('scraping_sources')
           .update({ last_scraped_at: new Date().toISOString() })
           .eq('id', source.id);
 
-        jobs.push({
-          job_id: job.id,
-          source: source.name,
-          urls_found: listingUrls.length,
-          status: 'completed',
-        });
-
+        jobs.push({ job_id: job.id, source: source.name, urls_found: listingUrls.length, status: 'completed' });
       } catch (scrapeError) {
         console.error(`Error scraping ${source.name}:`, scrapeError);
-        
         await supabase
           .from('scraping_jobs')
-          .update({
-            status: 'failed',
-            completed_at: new Date().toISOString(),
-            error_message: scrapeError instanceof Error ? scrapeError.message : 'Unknown error',
-          })
+          .update({ status: 'failed', completed_at: new Date().toISOString(), error_message: scrapeError instanceof Error ? scrapeError.message : 'Unknown error' })
           .eq('id', job.id);
-
-        jobs.push({
-          job_id: job.id,
-          source: source.name,
-          status: 'failed',
-          error: scrapeError instanceof Error ? scrapeError.message : 'Unknown error',
-        });
+        jobs.push({ job_id: job.id, source: source.name, status: 'failed', error: scrapeError instanceof Error ? scrapeError.message : 'Unknown error' });
       }
     }
 
